@@ -6,10 +6,10 @@ import jakarta.persistence.Id;
 import lombok.Data;
 
 @Data
-@Entity(name = "usersDataTable")
+@Entity(name = "usersTable")
 public class User {
     @Id
-    public Long chatId;
+    private Long chatId;
     private String firstName;
     private String lastName;
     private String registeredTime;

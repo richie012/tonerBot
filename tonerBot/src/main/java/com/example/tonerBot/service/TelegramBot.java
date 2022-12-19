@@ -2,7 +2,7 @@ package com.example.tonerBot.service;
 
 import com.example.tonerBot.config.BotConfig;
 import com.example.tonerBot.model.User;
-import com.example.tonerBot.model.UserRepository;
+import com.example.tonerBot.repo.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
@@ -23,6 +23,7 @@ public class TelegramBot extends TelegramLongPollingBot {
 
     public TelegramBot(BotConfig config) {
         this.config = config;
+
     }
 
     @Override
@@ -41,7 +42,6 @@ public class TelegramBot extends TelegramLongPollingBot {
         if (update.hasMessage() && update.getMessage().hasText()) {
             String messageText = update.getMessage().getText();
             long chatId = update.getMessage().getChatId();
-
 
             switch (messageText) {
                 //если получили сообщение старт делаем то то
@@ -81,8 +81,7 @@ public class TelegramBot extends TelegramLongPollingBot {
     }
 
     private void sendUtcTime(long chatId) {
-        String time = getTime();
-        sendMessage(chatId, time);
+        sendMessage(chatId, getTime());
 
     }
 
