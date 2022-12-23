@@ -36,6 +36,9 @@ public class TelegramBot extends TelegramLongPollingBot {
     final BotConfig config;
     static final String DELETE_ORDER_BUTTON = "DELETE_ORDER_BUTTON";
     static final String DELETE_RETURNED_ORDER_BUTTON = "DELETE_RETURNED_ORDER_BUTTON";
+    static final String DELETE_DAILY_ORDERS_BUTTON = "DELETE_DAILY_ORDERS_BUTTON";
+    static final String DELETE_WEEKLY_ORDERS_BUTTON = "DELETE_WEEKLY_ORDERS_BUTTON";
+
     public TelegramBot(BotConfig config) {
         this.config = config;
     }
@@ -55,18 +58,16 @@ public class TelegramBot extends TelegramLongPollingBot {
         if (update.hasMessage() && update.getMessage().hasText()) {
             String messageText = update.getMessage().getText();
             long chatId = update.getMessage().getChatId();
-            if (messageText.contains("-В") || messageText.contains("-в")){
+            if (messageText.contains("-В") || messageText.contains("-в")) {
                 var returnedOrderName = messageText.substring(messageText.indexOf(" "));
                 registerReturnedOrder(returnedOrderName);
                 sendMessage(chatId, "Заказ добавлен в возвраты");
-            }
-            else if (messageText.contains("-З") || messageText.contains("-з")) {
+            } else if (messageText.contains("-З") || messageText.contains("-з")) {
                 var orderNameAndComment = messageText.substring(messageText.indexOf(" "));
                 registerOrder(orderNameAndComment);
                 sendMessage(chatId, "Заказ добавлен");
             } else {
                 switch (messageText) {
-                    //если получили сообщение старт делаем то то
                     case "/start":
                         registerUser(update.getMessage());
                         startCommandReceived(chatId, update.getMessage().getChat().getFirstName());
@@ -88,12 +89,16 @@ public class TelegramBot extends TelegramLongPollingBot {
                         KeyboardRow row = new KeyboardRow();
 
                         row.add("Заказы на сегодня");
+                        row.add("Баланс/Заказы на неделю");
+
+
                         keyboardRows.add(row);
 
                         row = new KeyboardRow();
 
-                        row.add("Баланс/Заказы на неделю");
                         row.add("Возвраты");
+
+
                         keyboardRows.add(row);
 
                         keyboardMarkup.setKeyboard(keyboardRows);
@@ -116,23 +121,61 @@ public class TelegramBot extends TelegramLongPollingBot {
                             setDeleteInLineButtonOnDailyOrWeeklyOrders(chatId, text);
 
                         }
-                        sendMessage(chatId, "Всего заказов:" + dailyOrdersCount);
+                        SendMessage message = new SendMessage();
+                        message.setChatId(chatId);
+                        message.setText("Всего заказов:" + dailyOrdersCount);
+
+                        InlineKeyboardMarkup markupInLine = new InlineKeyboardMarkup();
+                        List<List<InlineKeyboardButton>> rowsInLine = new ArrayList<>();
+                        List<InlineKeyboardButton> rowInLine = new ArrayList<>();
+
+                        var deleteOrderButton = new InlineKeyboardButton();
+                        deleteOrderButton.setText("Отчистить дневной список");
+                        deleteOrderButton.setCallbackData(DELETE_DAILY_ORDERS_BUTTON);
+
+
+                        rowInLine.add(deleteOrderButton);
+                        rowsInLine.add(rowInLine);
+
+                        markupInLine.setKeyboard(rowsInLine);
+                        message.setReplyMarkup(markupInLine);
+
+                        executeMessage(message);
+
                         break;
                     case "Баланс/Заказы на неделю":
                         var weeklyOrdersCount = weeklyOrderRepository.count();
                         var weeklyOrders = weeklyOrderRepository.findAll();
 
-                        for (WeeklyOrder weeklyOrder : weeklyOrders){
+                        for (WeeklyOrder weeklyOrder : weeklyOrders) {
                             String text = weeklyOrder.getOrderId() + " " + weeklyOrder.getName() + " " + weeklyOrder.getComment() + " " + weeklyOrder.getDate();//соединяем id, имя, коммент и дату создания заказа
 
                             sendMessage(chatId, text);
                         }
-                        sendMessage(chatId, "Всего заказов: " + weeklyOrdersCount + "\nБаланс: " + weeklyOrdersCount*400);
+                        SendMessage message1 = new SendMessage();
+                        message1.setChatId(chatId);
+                        message1.setText("Всего заказов: " + weeklyOrdersCount + "\nБаланс: " + weeklyOrdersCount * 400);
 
+                        InlineKeyboardMarkup markupInLine1 = new InlineKeyboardMarkup();
+                        List<List<InlineKeyboardButton>> rowsInLine1 = new ArrayList<>();
+                        List<InlineKeyboardButton> rowInLine1 = new ArrayList<>();
+
+                        var deleteOrderButton1 = new InlineKeyboardButton();
+                        deleteOrderButton1.setText("Отчистить недельный список");
+                        deleteOrderButton1.setCallbackData(DELETE_WEEKLY_ORDERS_BUTTON);
+
+
+                        rowInLine1.add(deleteOrderButton1);
+                        rowsInLine1.add(rowInLine1);
+
+                        markupInLine1.setKeyboard(rowsInLine1);
+                        message1.setReplyMarkup(markupInLine1);
+
+                        executeMessage(message1);
                         break;
                     case "Возвраты":
                         var returnedOrders = returnedOrderRepository.findAll();
-                        for (ReturnedOrder returnedOrder: returnedOrders){
+                        for (ReturnedOrder returnedOrder : returnedOrders) {
                             String text = returnedOrder.getOrderId() + " " + returnedOrder.getName() + " " + returnedOrder.getComment() + " " + returnedOrder.getDate();//соединяем id, имя, коммент и дату создания заказа
                             setDeleteInLineButtonOnReturnedOrders(chatId, text);
                         }
@@ -144,27 +187,39 @@ public class TelegramBot extends TelegramLongPollingBot {
                 }
             }
 
-        }
-        else if(update.hasCallbackQuery()){
-            String callbackData = update.getCallbackQuery().getData();
-            long messageId = update.getCallbackQuery().getMessage().getMessageId();
-            long chatId = update.getCallbackQuery().getMessage().getChatId();
-            String callbackMessageText = update.getCallbackQuery().getMessage().getText();
-            long orderId = Long.parseLong(callbackMessageText.substring(0, callbackMessageText.indexOf(" ")));
+        } else if (update.hasCallbackQuery()) {
+            String callbackData = update.getCallbackQuery()
+                    .getData();
+            long messageId = update.getCallbackQuery().
+                    getMessage().getMessageId();
+            long chatId = update.getCallbackQuery().
+                    getMessage().getChatId();
+            String callbackMessageText = update.getCallbackQuery().
+                    getMessage().getText();
 
-            if(callbackData.equals(DELETE_ORDER_BUTTON)){
+            if (callbackData.equals(DELETE_ORDER_BUTTON)) {
+                long orderId = Long.parseLong(callbackMessageText.substring(0, callbackMessageText.indexOf(" ")));
                 deleteOrder(orderId);
                 String text = "Заказ удален из баз данных";
                 executeEditMessageText(text, chatId, messageId);
-            }
-            else if(callbackData.equals(DELETE_RETURNED_ORDER_BUTTON)){
+
+            } else if (callbackData.equals(DELETE_RETURNED_ORDER_BUTTON)) {
+                long orderId = Long.parseLong(callbackMessageText.substring(0, callbackMessageText.indexOf(" ")));
                 deleteReturnedOrder(orderId);
                 String text = "Заказ удален из возвратов";
                 executeEditMessageText(text, chatId, messageId);
+
+            } else if (callbackData.equals(DELETE_DAILY_ORDERS_BUTTON)) {
+                clearDailyOrders();
+                String text = "Заказы удалены";
+                executeEditMessageText(text, chatId, messageId);
+
+            } else if (callbackData.equals(DELETE_WEEKLY_ORDERS_BUTTON)) {
+                clearWeeklyOrders();
+                String text = "Заказы удалены";
+                executeEditMessageText(text, chatId, messageId);
+
             }
-//            else if (callbackData.equals(SHOW_ORDERS)){
-//                sendWeeklyOrders(chatId);
-//            }
 
         }
     }
@@ -214,15 +269,25 @@ public class TelegramBot extends TelegramLongPollingBot {
 
         executeMessage(message);
     }
-    private void deleteOrder(long orderId){
+
+    private void clearDailyOrders() {
+        dailyOrderRepository.deleteAll();
+    }
+
+    private void clearWeeklyOrders() {
+        weeklyOrderRepository.deleteAll();
+    }
+
+    private void deleteOrder(long orderId) {
         dailyOrderRepository.deleteById(orderId);
         weeklyOrderRepository.deleteById(orderId);
     }
-    private void deleteReturnedOrder(long orderId){
+
+    private void deleteReturnedOrder(long orderId) {
         returnedOrderRepository.deleteById(orderId);
     }
 
-    private void executeEditMessageText(String text, long chatId, long messageId){
+    private void executeEditMessageText(String text, long chatId, long messageId) {
         EditMessageText message = new EditMessageText();
         message.setChatId(String.valueOf(chatId));
         message.setText(text);
@@ -233,6 +298,7 @@ public class TelegramBot extends TelegramLongPollingBot {
         } catch (TelegramApiException e) {
         }
     }
+
     private void registerUser(Message msg) {
         if (userRepository.findById(msg.getChatId()).isEmpty()) {
             var chatId = msg.getChatId();
@@ -280,7 +346,8 @@ public class TelegramBot extends TelegramLongPollingBot {
         weeklyOrderRepository.save(weeklyOrder);
 
     }
-    private void registerReturnedOrder(String orderText){
+
+    private void registerReturnedOrder(String orderText) {
         String[] nameAndComment = orderText.split(" ");//-З мерс%5 коммент
 
         String orderName = nameAndComment[1];
@@ -297,10 +364,6 @@ public class TelegramBot extends TelegramLongPollingBot {
         returnedOrder.setComment(comment);
 
         returnedOrderRepository.save(returnedOrder);
-    }
-    private void startCommandReceived(long chatId, String name) {
-        String answer = "Привет " + name;
-        sendMessage(chatId, answer);
     }
 
     private void sendUtcTime(long chatId) {
@@ -344,5 +407,10 @@ public class TelegramBot extends TelegramLongPollingBot {
             execute(message);
         } catch (TelegramApiException e) {
         }
+    }
+
+    private void startCommandReceived(long chatId, String name) {
+        String answer = "Привет " + name;
+        sendMessage(chatId, answer);
     }
 }
